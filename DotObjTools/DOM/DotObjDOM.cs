@@ -78,40 +78,20 @@ public class DotObjDOM
     /// <summary>
     /// Only V
     /// </summary>
-    public readonly FaceItem_V[][] Faces_V;
-
-    /// <summary>
-    /// V, Vt, Vn
-    /// </summary>
-    public readonly FaceItem_V_Vt_Vn[][] Faces_V_Vt_Vn;
-
-    /// <summary>
-    /// V, Vn
-    /// </summary>
-    public readonly FaceItem_V_Vn[][] Faces_V_Vn;
-
-    /// <summary>
-    /// V, Vt
-    /// </summary>
-    public readonly FaceItem_V_Vt[][] Faces_V_Vt;
+    public readonly FaceItem[][] Faces;
 
     internal DotObjDOM
     (
         List<Vector4> geometricVertices,
         List<Vector3> textureVertices,
         List<Vector3> vertexNormals,
-        List<List<FaceItem_V>> faces_V,
-        List<List<FaceItem_V_Vt>> faces_V_Vt,
-        List<List<FaceItem_V_Vn>> faces_V_Vn,
-        List<List<FaceItem_V_Vt_Vn>> faces_V_Vt_Vn
+        List<List<FaceItem>> faces
     )
     {
         GeometricVertices = geometricVertices.ToArray();
         TextureVertices = textureVertices.ToArray();
         VertexNormals = vertexNormals.ToArray();
-        Faces_V = faces_V.ToTwoDimensionalArray();
-        Faces_V_Vt = faces_V_Vt.ToTwoDimensionalArray();
-        Faces_V_Vn = faces_V_Vn.ToTwoDimensionalArray();
-        Faces_V_Vt_Vn = faces_V_Vt_Vn.ToTwoDimensionalArray();
+        Faces = faces.ToTwoDimensionalArray();
+
     }
 }

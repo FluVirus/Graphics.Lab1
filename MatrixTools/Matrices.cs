@@ -3,7 +3,7 @@ using static System.MathF;
 
 namespace MatrixTools;
 
-public static class Matrix
+public static class Matrices
 {
     public static class Scale
     {

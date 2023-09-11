@@ -12,22 +12,22 @@ namespace GUISection.Extensions;
 
 internal static class DotObjDomExtenions
 {
-    public static (Vector4, Vector4)[] getModelLines(this DotObjDOM dom)
+    public static (int, int)[] getLines(this DotObjDOM dom)
     {
-        HashSet<(Vector4, Vector4)> modelLines = new HashSet<(Vector4, Vector4)>(3 * (dom.Faces_V.Length + dom.Faces_V_Vt.Length + dom.Faces_V_Vn.Length + dom.Faces_V_Vt_Vn.Length));
+        HashSet<(int, int)> modelLines = new HashSet<(int, int)>(3 * dom.Faces.Length);
         
-        foreach (FaceItem_V[] face in dom.Faces_V)
+        foreach (FaceItem[] face in dom.Faces)
         {
             for (int i = 0; i < face.Length; i++)
             {
                 modelLines.Add
                 ((
-                    dom.GeometricVertices[face[i].IndexV],
-                    dom.GeometricVertices[face[(i + 1) % face.Length].IndexV]
+                    face[i].V,
+                    face[(i + 1) % face.Length].V
                 ));
             }
         }
 
-        throw new NotImplementedException();
+        return modelLines.ToArray();
     }
 }

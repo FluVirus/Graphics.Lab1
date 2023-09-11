@@ -1,5 +1,6 @@
 ﻿using DotObjTools.Entities;
 using DotObjTools.Enums;
+using DotObjTools.Exceptions;
 using System.Numerics;
 
 namespace DotObjTools.DOM;
@@ -14,13 +15,7 @@ internal class DotObjDOMBuilder
 
     private List<Vector3> _vertexNormals = new List<Vector3>();
 
-    private List<List<FaceItem_V>> _faces_V = new List<List<FaceItem_V>>();
-
-    private List<List<FaceItem_V_Vn>> _faces_V_Vn = new List<List<FaceItem_V_Vn>>();
-
-    private List<List<FaceItem_V_Vt>> _faces_V_Vt = new List<List<FaceItem_V_Vt>>();
-
-    private List<List<FaceItem_V_Vt_Vn>> _faces_V_Vt_Vn = new List<List<FaceItem_V_Vt_Vn>>();
+    private List<List<FaceItem>> _faces = new List<List<FaceItem>>();
 
     public DotObjDOMBuilder()
     {
@@ -36,7 +31,7 @@ internal class DotObjDOMBuilder
         }
 
         Validate();
-        return new DotObjDOM(_geometricVertices, _textureVertices, _vertexNormals, _faces_V, _faces_V_Vt, _faces_V_Vn, _faces_V_Vt_Vn);
+        return new DotObjDOM(_geometricVertices, _textureVertices, _vertexNormals, _faces);
     }
 
     public void AddGeometricVertex(float x, float y, float z, float? w)
@@ -77,51 +72,14 @@ internal class DotObjDOMBuilder
             return result;
         }).Distinct().Single();
 
-        switch (result)
+        List<FaceItem> face = new List<FaceItem>(items.Length);
+        foreach ((int V, int? Vt, int? Vn) item in items)
         {
-            case FaceTypeEnum.V:
-                List<FaceItem_V> face_V = new List<FaceItem_V>(items.Length);
-                foreach ((int V, int?, int?) item in items)
-                {
-                    face_V.Add(new FaceItem_V(item.V));
-                }
-
-                _faces_V.Add(face_V);
-                break;
-
-            case FaceTypeEnum.V | FaceTypeEnum.Vt:
-                List<FaceItem_V_Vt> face_V_Vt = new List<FaceItem_V_Vt>(items.Length);
-                foreach ((int V, int? Vt, int?) item in items)
-                {
-                    face_V_Vt.Add(new FaceItem_V_Vt(item.V, item.Vt!.Value));
-                }
-
-                _faces_V_Vt.Add(face_V_Vt);
-                break;
-
-            case FaceTypeEnum.V | FaceTypeEnum.Vn:
-                List<FaceItem_V_Vn> face_V_Vn = new List<FaceItem_V_Vn>(items.Length);
-                foreach ((int V, int?, int? Vn) item in items)
-                {
-                    face_V_Vn.Add(new FaceItem_V_Vn(item.V, item.Vn!.Value));
-                }
-
-                _faces_V_Vn.Add(face_V_Vn);
-                break;
-
-            case FaceTypeEnum.V | FaceTypeEnum.Vt | FaceTypeEnum.Vn:
-                List<FaceItem_V_Vt_Vn> face_V_Vt_Vn = new List<FaceItem_V_Vt_Vn>(items.Length);
-                foreach ((int V, int? Vt, int? Vn) item in items)
-                {
-                    face_V_Vt_Vn.Add(new FaceItem_V_Vt_Vn(item.V, item.Vt!.Value, item.Vn!.Value));
-                }
-
-                _faces_V_Vt_Vn.Add(face_V_Vt_Vn);
-                break;
-
-            default:
-                throw new ArgumentException(message: $"How that is possible in {nameof(AddFace)} type of face is not match any of possible?");
+            face.Add(new FaceItem(item.V, item.Vt, item.Vn));
         }
+
+        _faces.Add(face);
+
     }
 
     private void Validate()
@@ -131,42 +89,38 @@ internal class DotObjDOMBuilder
 
     private void AdjustIndexes()
     {
-        for (int polygonIterator = 0; polygonIterator < _faces_V.Count; polygonIterator++)
+        for (int polygonIterator = 0; polygonIterator < _faces.Count; polygonIterator++)
         {
-            List<FaceItem_V> polygon = _faces_V[polygonIterator];
+            List<FaceItem> polygon = _faces[polygonIterator];
             for (int vertixIndexIterator = 0; vertixIndexIterator < polygon.Count; vertixIndexIterator++)
             {
-                polygon[vertixIndexIterator] = new FaceItem_V(polygon[vertixIndexIterator].IndexV - 1);
+                FaceItem oldFaceItem = polygon[vertixIndexIterator];
+                polygon[vertixIndexIterator] = new FaceItem(
+                            AdjustIndex(oldFaceItem.V)!.Value,
+                            AdjustIndex(oldFaceItem.Vt),
+                            AdjustIndex(oldFaceItem.Vn)
+                );
             }
         }
+    }
 
-        for (int polygonIterator = 0; polygonIterator < _faces_V_Vt.Count; polygonIterator++)
+    private int? AdjustIndex(int? index)
+    {
+        if (!index.HasValue)
+            return null;
+
+        if (index.Value == 0)
+            throw new ArgumentOutOfRangeException(paramName: nameof(index), message: "0 vertex index spotted");
+
+        if (index.Value > 0)
+            return index.Value - 1;
+
+        int toRet = _geometricVertices.Count - index.Value;
+        if (toRet <= 0)
         {
-            List<FaceItem_V_Vt> polygon = _faces_V_Vt[polygonIterator];
-            for (int vertixIndexIterator = 0; vertixIndexIterator < polygon.Count; vertixIndexIterator++)
-            {
-                polygon[vertixIndexIterator] = new FaceItem_V_Vt(polygon[vertixIndexIterator].IndexV - 1, polygon[vertixIndexIterator].IndexVt - 1);
-            }
+            throw new ArgumentOutOfRangeException(paramName: nameof(index), message: "Negative out of boundary vertex index spotted");
         }
 
-        for (int polygonIterator = 0; polygonIterator < _faces_V_Vn.Count; polygonIterator++)
-        {
-            List<FaceItem_V_Vn> polygon = _faces_V_Vn[polygonIterator];
-            for (int vertixIndexIterator = 0; vertixIndexIterator < polygon.Count; vertixIndexIterator++)
-            {
-                polygon[vertixIndexIterator] = new FaceItem_V_Vn(polygon[vertixIndexIterator].IndexV - 1, polygon[vertixIndexIterator].IndexVn - 1);
-            }
-        }
-
-        for (int polygonIterator = 0; polygonIterator < _faces_V_Vt_Vn.Count; polygonIterator++)
-        {
-            List<FaceItem_V_Vt_Vn> polygon = _faces_V_Vt_Vn[polygonIterator];
-            for (int vertixIndexIterator = 0; vertixIndexIterator < polygon.Count; vertixIndexIterator++)
-            {
-                polygon[vertixIndexIterator] = new FaceItem_V_Vt_Vn(polygon[vertixIndexIterator].IndexV - 1, polygon[vertixIndexIterator].IndexVt - 1, polygon[vertixIndexIterator].IndexVn - 1);
-            }
-        }
-
-        //TODO: CHECK FOR NEGATIVE VALUES AND 0s
+        return toRet;
     }
 }
